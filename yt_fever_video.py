@@ -1,18 +1,24 @@
 import requests
 import json
+import csv
+import pandas as pd
+from pandas.io.json import json_normalize
 from pprint import pprint
-from datetime import datetime
-
+from datetime import datetime, timezone, timedelta
 
 YOUTUBE_API_KEY = "AIzaSyBNmtaOJYMTlBkeH5w5dL4VWl4MfxQIPa0"
-filename = 'youtube_fever_video.json'
 
-all_fever_viedo = {'yt fever video': [], 'Update time': "" }
+filenameJ = 'youtube_fever_video.json'
+filenameC = 'youtube_fever_video.csv'
 
-fever_video_data = {"ChannelInfo": [], "VideoInfo": []}
+all_fever_viedo = {'YT Trending Video': [], 'Update Time': "" }
+
+fever_video_data = {"Channel Info": [], "Video Info": []}
 
 channel_info_list = []
 video_info_list = []
+all_keys = []
+all_values = []
 
 def main():
     youtube_spider = YoutubeSpider(YOUTUBE_API_KEY)
@@ -22,15 +28,16 @@ def main():
 
         channel_info = youtube_spider.get_channel(youtube_channel_id)
         channel_info_list.append(channel_info)
-        print(channel_info_list)
 
     for id in youtube_spider.get_popular_video()['items']:
         video_id = id['id']
-
         video_info = youtube_spider.get_video(video_id)
         video_info_list.append(video_info)
 
-        next_page_token = ''
+        # r.writeheader()
+        # r.writerow(video_info.values())
+
+        # next_page_token = ''
         # while 1:
         #     comments, next_page_token = youtube_spider.get_comments(video_id, page_token=next_page_token)
         #     comments_info_list.append(comments)
@@ -42,16 +49,59 @@ def main():
         #         break
 
     for data in range(len(video_info_list)):
-        fever_video_data['ChannelInfo'] = channel_info_list[data]
-        fever_video_data['VideoInfo'] = video_info_list[data]
+        fever_video_data['Channel Info'] = channel_info_list[data]
+        fever_video_data['Video Info'] = video_info_list[data]
         # fever_video_data['CommentsInfo'] = comments_info_list[data]
-        all_fever_viedo['yt fever video'].append(fever_video_data.copy())
-    all_fever_viedo['Update time'] = datetime.today().strftime('%A, %B %d, %Y %H:%M:%S')
+        all_fever_viedo['YT Trending Video'].append(fever_video_data.copy())
+    all_fever_viedo['Update Time'] = "UTC+8 " + datetime.today().strftime('%Y-%m-%d %H:%M:%S')
 
-    with open(filename, 'w') as w_f:
+    with open(filenameJ, 'w') as w_f:
         youtube_fever_video = all_fever_viedo
         w_f.write(json.dumps(youtube_fever_video, sort_keys=True, indent=4))
 
+
+    for key in channel_info_list[0].keys():
+        all_keys.append(key)
+
+    for i in range(len(channel_info_list)):
+        channel_values = []
+        for value in channel_info_list[i].values():
+            channel_values.append(value)
+        all_values.append(channel_values)
+
+    for key in video_info_list[0].keys():
+        all_keys.append(key)
+
+    for i in range(len(video_info_list)):
+        video_values = []
+        for value in video_info_list[i].values():
+            video_values.append(value)
+            all_values[i].append(value)
+        all_values[i].append(all_fever_viedo['Update Time'])
+
+    with open(filenameC, 'w', newline='', encoding='UTF-8') as csvfiel:
+        r = csv.writer(csvfiel)
+        r.writerow(all_keys + ['Update Time'])
+        for i in all_values:
+            r.writerow(i)
+
+
+
+
+
+
+    #     all_fever_viedo['YT Trending Video'][i]['ChannelInfo'],
+    #                        # all_fever_viedo['YT Trending Video'][i]['ChannelInfo']['SubscriberCount'],
+    #                        # all_fever_viedo['YT Trending Video'][i]['ChannelInfo']['TotalVideoCount'],
+    #                        # all_fever_viedo['YT Trending Video'][i]['ChannelInfo']['TotalViewsCount'],
+    #                        # all_fever_viedo['YT Trending Video'][i]['VideoInfo']['ChannelTitle'],
+    #                        # all_fever_viedo['YT Trending Video'][i]['VideoInfo']['CommentCount'],
+    #                        # all_fever_viedo['YT Trending Video'][i]['VideoInfo']['LikeCount'],
+    #                        # all_fever_viedo['YT Trending Video'][i]['VideoInfo']['Description'],
+    #                        # all_fever_viedo['YT Trending Video'][i]['VideoInfo']['PublishedAt'],
+    #                        # all_fever_viedo['YT Trending Video'][i]['VideoInfo']['Video_url'],
+    #                        # all_fever_viedo['YT Trending Video'][i]['VideoInfo']['ViewCount'],
+    #                        # all_fever_viedo['YT Trending Video'][i]['VideoInfo']['Title'], all_fever_viedo['Update Time']
 
 class YoutubeSpider():
     def __init__(self, api_key):
@@ -95,10 +145,10 @@ class YoutubeSpider():
         url_ = f"https://www.youtube.com/channel/{data_item['id']}"
 
         info = {
-            'ChannelLink': url_,
-            'TotalVideoCount': subscriber,
-            'SubscriberCount': data_item['statistics']['videoCount'],
-            'TotalViewsCount': data_item['statistics']['viewCount']
+            'Channel URL': url_,
+            'Total Video Count': subscriber,
+            'Subscriber Count': data_item['statistics']['videoCount'],
+            'Total Views Count': data_item['statistics']['viewCount']
         }
         return info
 
@@ -115,22 +165,24 @@ class YoutubeSpider():
 
         try:
             # 2019-09-29T04:17:05Z
-            time_ = data_item['snippet']['publishedAt']
+            o_time = str(data_item['snippet']['publishedAt'])
+            r_time = datetime.strptime(o_time, '%Y-%m-%dT%H:%M:%SZ')
+            time = "UTC+8 " + str(r_time.replace(tzinfo=timezone(timedelta(hours=8))))
         except ValueError:
             # 日期格式錯誤
-            time_ = None
+            time = None
 
         url_ = f"https://www.youtube.com/watch?v={data_item['id']}"
 
         info = {
-            'ChannelTitle': data_item['snippet']['channelTitle'],
-            'PublishedAt': time_,
-            'Video_url': url_,
-            'Yitle': data_item['snippet']['title'],
+            'Channel Title': data_item['snippet']['channelTitle'],
+            'Published At': time,
+            'Video URL': url_,
+            'Title': data_item['snippet']['title'],
             'Description': data_item['snippet']['description'],
-            'LikeCount': data_item['statistics']['likeCount'],
-            'CommentCount': data_item['statistics']['commentCount'],
-            'ViewCount': data_item['statistics']['viewCount']
+            'Like Count': data_item['statistics']['likeCount'],
+            'Comment Count': data_item['statistics']['commentCount'],
+            'View Count': data_item['statistics']['viewCount']
         }
         return info
 
