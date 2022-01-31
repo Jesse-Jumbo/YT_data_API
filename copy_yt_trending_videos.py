@@ -8,7 +8,7 @@ from datetime import datetime, timezone, timedelta
 filenameJ = 'youtube_trending_video.json'
 filenameC = 'youtube_trending_video.csv'
 
-YOUTUBE_API_KEY = "AIzaSyBNmtaOJYMTlBkeH5w5dL4VWl4MfxQIPa0"
+YOUTUBE_API_KEY = "your api key"
 
 all_trending_video = {'yt_trending_video': [], 'update_time': "" }
 
