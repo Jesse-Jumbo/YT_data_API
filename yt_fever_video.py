@@ -6,7 +6,7 @@ from pandas.io.json import json_normalize
 from pprint import pprint
 from datetime import datetime, timezone, timedelta
 
-YOUTUBE_API_KEY = "AIzaSyBNmtaOJYMTlBkeH5w5dL4VWl4MfxQIPa0"
+YOUTUBE_API_KEY = "your api key"
 
 filenameJ = 'youtube_fever_video.json'
 filenameC = 'youtube_fever_video.csv'
